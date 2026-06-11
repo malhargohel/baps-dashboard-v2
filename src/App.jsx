@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 const FORM_ID = "261613290999872";
 const API_KEY = "c420ad0e80347ee226a9dc2fcd1a0ca5";
 
-// ── Jotform REST helper ──────────────────────────────────────────────────────
 async function fetchSubmissions() {
   const res = await fetch(
     `https://api.jotform.com/form/${FORM_ID}/submissions?apiKey=${API_KEY}&limit=1000&orderby=created_at`,
@@ -25,33 +24,41 @@ async function fetchSubmissions() {
       return null;
     };
 
+    const rawDate = get("Event Date");
+    let eventDate = null;
+    if (rawDate && typeof rawDate === "object") {
+      const { year, month, day } = rawDate;
+      if (year) eventDate = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    } else if (typeof rawDate === "string") {
+      eventDate = rawDate;
+    }
+
     return {
       submissionId: sub.id,
       submittedAt: sub.created_at,
-      centre:            get("Centre", "Location"),
-      eventType:         get("Event Type"),
-      eventDate:         get("Event Date"),
-      totalAttendance:   get("Total Attendance"),
-      bloodUnits:        get("Units of Blood"),
-      bloodLitres:       get("Litres of Blood"),
-      donors:            get("Number of Donors"),
-      treesPlanted:      get("Trees Planted"),
-      volunteerHours:    get("Volunteer Hours"),
-      blanketsCollected: get("Blankets Collected"),
+      centre:              get("Centre", "Location"),
+      eventType:           get("Event Type"),
+      eventDate,
+      totalAttendance:     get("Total Attendance"),
+      bloodUnits:          get("Units of Blood"),
+      bloodLitres:         get("Litres of Blood"),
+      donors:              get("Number of Donors"),
+      treesPlanted:        get("Trees Planted"),
+      volunteerHours:      get("Volunteer Hours"),
+      blanketsCollected:   get("Blankets Collected"),
       blanketsDistributed: get("Blankets Distributed"),
-      toysCollected:     get("Toys Collected"),
-      toysDistributed:   get("Toys Distributed"),
-      foodKg:            get("Food Collected"),
-      mealsProvided:     get("Meals Provided"),
-      foodPackages:      get("Food Packages"),
-      otherOutcomeDesc:  get("Other Charity"),
-      otherOutcomeQty:   get("Quantity"),
-      submitterName:     get("Full Name"),
+      toysCollected:       get("Toys Collected"),
+      toysDistributed:     get("Toys Distributed"),
+      foodKg:              get("Food Collected"),
+      mealsProvided:       get("Meals Provided"),
+      foodPackages:        get("Food Packages"),
+      otherOutcomeDesc:    get("Other Charity"),
+      otherOutcomeQty:     get("Quantity"),
+      submitterName:       get("Full Name"),
     };
   });
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = v => parseFloat(v) || 0;
 function sumField(rows, key) { return rows.reduce((a, r) => a + fmt(r[key]), 0); }
 function groupBy(rows, key) {
@@ -78,7 +85,6 @@ function downloadCSV(rows, filename) {
   URL.revokeObjectURL(url);
 }
 
-// ── Components ───────────────────────────────────────────────────────────────
 function Card({ label, value, unit, color }) {
   return (
     <div style={{ background:"#fff", borderRadius:12, padding:"18px 20px", boxShadow:"0 1px 4px rgba(0,0,0,0.08)", borderTop:`3px solid ${color}` }}>
@@ -117,7 +123,6 @@ function BarChart({ data, color, valueLabel }) {
   );
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
 const ACCENT="#E84C3D", BLUE="#3B82F6", GREEN="#10B981", PURPLE="#8B5CF6", ORANGE="#F59E0B";
 const METRIC_GROUPS = [
   { label:"Blood Units",          key:"bloodUnits",           unit:"units", color:ACCENT },
@@ -135,17 +140,16 @@ const METRIC_GROUPS = [
   { label:"Total Attendance",     key:"totalAttendance",      unit:"",      color:BLUE },
 ];
 
-// ── Main ─────────────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const [rows, setRows]           = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
+  const [rows, setRows]               = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
-  const [filterCentre, setFilterCentre] = useState("All");
-  const [filterType, setFilterType]     = useState("All");
+  const [filterCentre, setFilterCentre]     = useState("All");
+  const [filterType, setFilterType]         = useState("All");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo]     = useState("");
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab]     = useState("overview");
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -166,9 +170,8 @@ export default function Dashboard() {
     return true;
   });
 
-  const centres = ["All", ...Array.from(new Set(rows.map(r=>r.centre).filter(Boolean))).sort()];
-  const types   = ["All", ...Array.from(new Set(rows.map(r=>r.eventType).filter(Boolean))).sort()];
-
+  const centres  = ["All", ...Array.from(new Set(rows.map(r=>r.centre).filter(Boolean))).sort()];
+  const types    = ["All", ...Array.from(new Set(rows.map(r=>r.eventType).filter(Boolean))).sort()];
   const byCentre = Object.entries(groupBy(filtered,"centre")).map(([label,rs])=>({ label, value:sumField(rs,"totalAttendance") })).sort((a,b)=>b.value-a.value);
   const byMonth  = Object.entries(filtered.reduce((acc,r)=>{ const m=(r.eventDate||"").slice(0,7)||"Unknown"; acc[m]=(acc[m]||0)+fmt(r.totalAttendance); return acc; },{})).map(([label,value])=>({ label,value })).sort((a,b)=>a.label.localeCompare(b.label));
   const byType   = Object.entries(groupBy(filtered,"eventType")).map(([label,rs])=>({ label, value:rs.length })).sort((a,b)=>b.value-a.value);
@@ -178,8 +181,6 @@ export default function Dashboard() {
 
   return (
     <div style={{ fontFamily:"'Inter',system-ui,sans-serif", background:"#f7f8fa", minHeight:"100vh", paddingBottom:40 }}>
-
-      {/* Header */}
       <div style={{ background:"#1a1a2e", color:"#fff", padding:"22px 32px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <div>
           <div style={{ fontSize:11, letterSpacing:2, color:ACCENT, textTransform:"uppercase", fontWeight:700, marginBottom:4 }}>BAPS Swaminarayan</div>
@@ -194,14 +195,12 @@ export default function Dashboard() {
       </div>
 
       <div style={{ padding:"24px 32px" }}>
-
         {error && (
           <div style={{ background:"#fef2f2", border:"1px solid #fca5a5", borderRadius:10, padding:"12px 16px", color:"#b91c1c", marginBottom:20, fontSize:13 }}>
             ⚠ {error}
           </div>
         )}
 
-        {/* Filters */}
         <div style={{ background:"#fff", borderRadius:12, padding:"16px 20px", marginBottom:24, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", display:"flex", flexWrap:"wrap", gap:12, alignItems:"center" }}>
           <span style={{ fontSize:13, fontWeight:600, color:"#555" }}>Filter:</span>
           <select style={sel} value={filterCentre} onChange={e=>setFilterCentre(e.target.value)}>{centres.map(c=><option key={c}>{c}</option>)}</select>
@@ -214,7 +213,6 @@ export default function Dashboard() {
           <span style={{ marginLeft:"auto", fontSize:13, color:"#888" }}>{filtered.length} of {rows.length} submission{rows.length!==1?"s":""}</span>
         </div>
 
-        {/* Tabs */}
         <div style={{ display:"flex", gap:4, marginBottom:24, background:"#fff", borderRadius:10, padding:4, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", width:"fit-content", flexWrap:"wrap" }}>
           {[["overview","Overview"],["bycentre","By Centre"],["bydate","By Date"],["bytype","By Event Type"],["submissions","All Submissions"]].map(([t,l])=>(
             <button key={t} style={tabStyle(t)} onClick={()=>setActiveTab(t)}>{l}</button>
@@ -224,15 +222,14 @@ export default function Dashboard() {
         {loading && <div style={{ textAlign:"center", padding:60, color:"#aaa", fontSize:14 }}>Loading submissions…</div>}
 
         {!loading && rows.length===0 && !error && (
-          <div style={{ background:"#fff", borderRadius:12, padding:48, textAlign:"center", color:"#bbb", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+          <div style={{ background:"#fff", borderRadius:12, padding:48, textAlign:"center", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
             <div style={{ fontSize:40, marginBottom:12 }}>📋</div>
             <div style={{ fontSize:16, fontWeight:600, color:"#ccc" }}>No submissions yet</div>
-            <div style={{ fontSize:13, marginTop:6 }}>Data will appear here as people complete the form.</div>
+            <div style={{ fontSize:13, marginTop:6, color:"#bbb" }}>Data will appear here as people complete the form.</div>
           </div>
         )}
 
         {!loading && rows.length>0 && <>
-
           {activeTab==="overview" && (
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:14 }}>
               <Card label="Total Events" value={filtered.length} color={BLUE} />
